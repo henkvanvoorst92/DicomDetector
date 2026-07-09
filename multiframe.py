@@ -2,7 +2,7 @@
 import os
 import pydicom
 import pandas as pd
-from dicomdetector.metadata import get_tag_value
+from metadata import get_tag_value
 
 # Function used for CTP/PWI/DWI/ASL identification
 def check_same_position(files, extract_time=True):

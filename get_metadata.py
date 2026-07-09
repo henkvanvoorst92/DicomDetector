@@ -8,12 +8,12 @@ import warnings
 #warnings.filterwarnings("ignore", message="The value length *")
 warnings.filterwarnings("ignore")
 
-from dicomdetector.metadata import complete_tag_values, get_tag_value
-from dicomdetector.multiframe import n_same_position_from_dicom
-from dicomdetector.datetimeadjust import get_datetime_column, pd_redo_timestamp
-from dicomdetector.modality_finder import dwi_identifier, perf_identifier, ncct_identifier, cta_identifier
-from helpers.general import combine_excel_files
-from helpers.arguments import get_general_args
+from metadata import complete_tag_values, get_tag_value
+from multiframe import n_same_position_from_dicom
+from datetimeadjust import get_datetime_column, pd_redo_timestamp
+from modality_finder import dwi_identifier, perf_identifier, ncct_identifier, cta_identifier
+from utils import combine_excel_files
+from utils import get_general_args
 #from helpers.ctp_metadata import chunk_jobs, n_same_position_from_dicom
 from multiprocessing import Pool
 

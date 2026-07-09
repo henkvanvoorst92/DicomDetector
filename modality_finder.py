@@ -6,14 +6,14 @@ import numpy as np
 import ast
 
 #import lists of kernels for inclusion
-from dicomdetector.default_information import CTA_kernels, NCCT_kernels, NCCT_BONE_kernels, \
+from default_information import CTA_kernels, NCCT_kernels, NCCT_BONE_kernels, \
     DE_kernels, Topogram_kernel, Testbolus_kernel, multi_modal_kernels
 #import descriptions for inclusion
-from dicomdetector.default_information import CTA_description, NCCT_description, NCCT_BONE_description, \
+from default_information import CTA_description, NCCT_description, NCCT_BONE_description, \
     DE_description, DSA_description, CTP_description
 #import exclusion descriptions
-from dicomdetector.default_information import EXCLUSION_description
-from helpers.arguments import get_general_args
+from default_information import EXCLUSION_description
+from utils import get_general_args
 
 def map_imagetype(cell):
     s = str(cell).lower()
