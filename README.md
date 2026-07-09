@@ -28,7 +28,7 @@ pip install -r requirements.txt
 
 ## Usage
 
-1. Place your DICOM folders in the repository structure.
-2. Run the metadata extraction workflow.
+1. Place your DICOM folders in the repository structure. The root of your input data should contain subdirectories which are unique IDs.
+2. Run the metadata extraction workflow: see main.py or run.sh.
 3. Review the generated Excel files.
 4. Use the modality labels and `likely_modality` output for downstream analysis.
