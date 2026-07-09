@@ -10,7 +10,7 @@ from default_information import CTA_kernels, NCCT_kernels, NCCT_BONE_kernels, \
     DE_kernels, Topogram_kernel, Testbolus_kernel, multi_modal_kernels
 #import descriptions for inclusion
 from default_information import CTA_description, NCCT_description, NCCT_BONE_description, \
-    DE_description, DSA_description, CTP_description
+    DE_description, DSA_description, CTP_description, DWI_description_excl, PERF_description_excl
 #import exclusion descriptions
 from default_information import EXCLUSION_description
 from utils import get_general_args
@@ -25,7 +25,7 @@ def map_imagetype(cell):
         return 1
     else:
         return 4 # "any other number for rest" - adjust as needed
-def dwi_identifier(mdata, n_same_pos=(2,12), sd_excl=['asl', 'fmri', 'qsm', 'pref', *EXCLUSION_description]):
+def dwi_identifier(mdata, n_same_pos=(2,12), sd_excl=[ *EXCLUSION_description, *DWI_description_excl]):
 
     if isinstance(mdata, pd.Series):
         mdata = mdata.to_frame().T
@@ -48,7 +48,7 @@ def dwi_identifier(mdata, n_same_pos=(2,12), sd_excl=['asl', 'fmri', 'qsm', 'pre
     mdata['likely_dwi'] = likely_dwi
     return mdata
 
-def perf_identifier(mdata, n_same_pos=(12,1e6), sd_excl=['asl', 'fmri', 'qsm',*EXCLUSION_description]):
+def perf_identifier(mdata, n_same_pos=(12,1e6), sd_excl=['asl', 'fmri', 'qsm',*EXCLUSION_description, PERF_description_excl]):
 
     if isinstance(mdata, pd.Series):
         mdata = mdata.to_frame().T

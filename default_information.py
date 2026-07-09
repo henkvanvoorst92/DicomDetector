@@ -49,6 +49,9 @@ NCCT_description = ['zonder contrast', 'blanco', '11912593', 'schedel', 'cerebru
 CTP_description = ['perfusie', 'perfusion', 'ctp', 'smart prep', 'perf', '5 AX, iDose (3)', 'vpct']
 DSA_description = ['strokebehandeling', 'cerebral', 'lao', 'carotis', 'bronchialis', '4f', 'fluor', 'vfr',
                    'fps']
+DWI_description_excl = ['asl', 'fmri', 'qsm', 'cor', 'sag', 'pjn', 'perf', 'cine', 'ivim', 'dti', 'pwi', 'swi']
+PERF_description_excl = ['asl', 'fmri', 'qsm', 'cor', 'sag', 'pjn', 'cine', 'ivim', 'dti', 'swi']
+
 DE_description = ['dual', 'overlay']
 Testbolus_description = ['tracker', 'smart prep', 'testbolus', 'monitoring  10']
 

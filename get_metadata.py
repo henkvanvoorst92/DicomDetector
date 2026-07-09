@@ -14,7 +14,6 @@ from datetimeadjust import get_datetime_column, pd_redo_timestamp
 from modality_finder import dwi_identifier, perf_identifier, ncct_identifier, cta_identifier
 from utils import combine_excel_files
 from utils import get_general_args
-#from helpers.ctp_metadata import chunk_jobs, n_same_position_from_dicom
 from multiprocessing import Pool
 
 
@@ -126,7 +125,9 @@ def get_all_metadata(inp,
     """
     p_in: first folder should be ID, remainder dicom data dump
     p_out: output location for metadata
-    min_files: only folders in p_in with more than min_files are considered
+    file_limits: only folders in p_in within the file_limites are considered
+    multipos_limits: only folders in p_in within the multipos_limits (number of volumes with same position) are considered
+    skip_tags: dicom tags to skip when extracting metadata
     """
     min_files, max_files = file_limits
     min_mpos, max_mpos = multipos_limits
@@ -159,11 +160,16 @@ def get_full_combined(dir_outputs, f_out=None, incl_string='_metadata.xlsx', red
     if not os.path.exists(f_out):
         df = combine_excel_files(dir_outputs, incl_string=incl_string, verbose=True)
         #df = df_add_same_position(df)
-        first_cols = ['ID', 'SeriesDescription', 'SliceThickness', 'likely_ctp', 'likely_pwi', 'likely_dwi',
+
+        #first columns in output file
+        first_cols = ['ID', 'SeriesDescription', 'SliceThickness',
+                       'likely_ncct',  'likely_cta', 'likely_ctp', 'likely_pwi', 'likely_dwi',
+                      'nfiles', 'same_position_number', 'scandir',
+                      'SelectedDateTime', 'DateTimeSelected',
                       'AcquisitionDateTime', 'AcquisitionDate', 'AcquisitionTime',
                       'ContentDateTime', 'ContentDate', 'ContentTime',
                       'SeriesDateTime', 'SeriesDate', 'SeriesTime',
-                      'nfiles', 'same_position_number', 'scandir']
+                      ]
         df = df[[c for c in first_cols if c in df.columns] + [c for c in df.columns if c not in first_cols]]
 
         if redo_timestamps:
@@ -174,8 +180,8 @@ def get_full_combined(dir_outputs, f_out=None, incl_string='_metadata.xlsx', red
                 tmp['ID'] = ID
                 tmp['DateTimeSelected'] = tmp.apply(lambda row: row[row['datetimevar']], axis=1)
                 tmp.sort_values(by=['DateTimeSelected'], inplace=True)
-                tmp = dwi_identifier(tmp, n_same_pos=(2,14), sd_excl=['asl', 'fmri', 'qsm', 'cor', 'sag', 'pjn', 'perf', 'cine', 'ivim', 'dti', 'pwi', 'swi'])
-                tmp = perf_identifier(tmp, n_same_pos=(14,1e6), sd_excl=['asl', 'fmri', 'qsm', 'cor', 'sag', 'pjn', 'cine', 'ivim', 'dti', 'swi'])
+                tmp = dwi_identifier(tmp, n_same_pos=(2,14))
+                tmp = perf_identifier(tmp, n_same_pos=(14,1e6))
                 tmp = ncct_identifier(tmp)
                 tmp = cta_identifier(tmp)
                 out.append(tmp)
