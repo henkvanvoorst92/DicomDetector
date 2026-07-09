@@ -1,0 +1,11 @@
+#Python 3.11
+#uses python=3.11
+pydicom==2.4.3
+pandas==2.1.3
+openpyxl==3.0.10
+tqdm==4.65.0
+numpy==1.24.3
+multiprocess==0.70.16
+pyyaml==6.0.2
+#argeparse
+#itertools?
