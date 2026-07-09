@@ -26,14 +26,14 @@ The current workflows are targeted toward image analysis of stroke patients and 
 pip install -r requirements.txt
 ```
 
-## Usage
+## Usage Instructions
 
 1. Place your DICOM folders in the repository structure. The root of your input data should contain subdirectories that are unique IDs.
    Structure:
-   --> `args.input`
-       --> ID1
-       --> ID2
-       --> IDx
+   - `args.input`
+     - ID1
+     - ID2
+     - IDx
 2. Define an output folder `args.output`, in this folder, each ID will have an Excel file with all metadata.
 3. Run the metadata extraction workflow (see main.py or run.sh.). `njobs` can be used for parallel processing.
    ```bash
