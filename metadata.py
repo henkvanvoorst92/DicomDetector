@@ -144,20 +144,30 @@ def complete_tag_values(dcm, stringconvert=False, skip_tags=[]):
     if 'PerFrameFunctionalGroupsSequence' in dcm_keys or 'PerFrameFunctionalGroupsSequence' in dcm_valnames:
         subdcm = dcm['PerFrameFunctionalGroupsSequence'][10]
         for subkey in subdcm.keys():
-            subsubdcm = subdcm[subkey][0]
-            tagname2no, tagno2name = get_tagnos_tagnames(subsubdcm)
-            r = all_tag_values(subsubdcm, tagno2name, stringconvert=True)
-            row_tags.extend(r)
-            cols.extend(list(tagname2no.keys()))
+            try:
+                if len(subdcm[subkey].value) == 0:
+                    continue
+                subsubdcm = subdcm[subkey][0]
+                tagname2no, tagno2name = get_tagnos_tagnames(subsubdcm)
+                r = all_tag_values(subsubdcm, tagno2name, stringconvert=True)
+                row_tags.extend(r)
+                cols.extend(list(tagname2no.keys()))
+            except Exception as e:
+                print('Error in PerFrameFunctionalGroupsSequence:', e)
 
     if 'SharedFunctionalGroupsSequence' in dcm_keys or 'SharedFunctionalGroupsSequence' in dcm_valnames:
         subdcm = dcm['SharedFunctionalGroupsSequence'][0]
         for subkey in subdcm.keys():
-            subsubdcm = subdcm[subkey][0]
-            tagname2no, tagno2name = get_tagnos_tagnames(subsubdcm)
-            r = all_tag_values(subsubdcm, tagno2name, stringconvert=True)
-            row_tags.extend(r)
-            cols.extend(list(tagname2no.keys()))
+            try:
+                if len(subdcm[subkey].value) == 0:
+                    continue
+                subsubdcm = subdcm[subkey][0]
+                tagname2no, tagno2name = get_tagnos_tagnames(subsubdcm)
+                r = all_tag_values(subsubdcm, tagno2name, stringconvert=True)
+                row_tags.extend(r)
+                cols.extend(list(tagname2no.keys()))
+            except Exception as e:
+                print('Error in SharedFunctionalGroupsSequence:', e)
     try:
         row_tags = np.array(row_tags)
         cols = np.array(cols)

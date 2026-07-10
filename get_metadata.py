@@ -62,55 +62,62 @@ def all_series_of_ID(ID, p_in, f_out=None, file_limits=(0, 1e6), multipos_limits
     unique_dirno = 0
     scan_mdata = []
     for root, drs, files in os.walk(pid):
-        if len(files) < min_files or len(files) > max_files:
+        try:
+            if len(files) < min_files or len(files) > max_files:
+                continue
+            n_same_position = n_same_position_from_dicom(root, fix=min_files - 1)
+            if n_same_position < min_mpos or n_same_position > max_mpos:
+                continue
+            file10 = os.path.join(root, os.listdir(root)[min_files - 1])
+            dcm = pydicom.dcmread(file10, stop_before_pixels=True)
+            tmp = complete_tag_values(dcm, skip_tags=skip_tags)
+            tmp['dirno'] = unique_dirno
+            tmp['dcmfile'] = file10
+            tmp['ID'] = ID
+            tmp['pid'] = pid.replace('/mnt/newstroke/', '').replace('/mnt/stroke/', '')
+            tmp['scandir'] = root.replace('/mnt/newstroke/', '').replace('/mnt/stroke/', '')
+            tmp['nfiles'] = len(files)
+            tmp['same_position_number'] = n_same_position
+            # datetimevar, tmp = get_datetime_column(tmp)
+            unique_dirno += 1
+            if isinstance(tmp, pd.Series):
+                tmp = tmp.to_frame().T
+
+            scan_mdata.append(tmp)
+        except Exception as e:
+            print(f"Error processing {root}: {e}")
             continue
-        n_same_position = n_same_position_from_dicom(root, fix=min_files - 1)
-        if n_same_position < min_mpos or n_same_position > max_mpos:
-            continue
-        file10 = os.path.join(root, os.listdir(root)[min_files - 1])
-        dcm = pydicom.dcmread(file10, stop_before_pixels=True)
-        tmp = complete_tag_values(dcm, skip_tags=skip_tags)
-        tmp['dirno'] = unique_dirno
-        tmp['dcmfile'] = file10
-        tmp['ID'] = ID
-        tmp['pid'] = pid.replace('/mnt/newstroke/', '').replace('/mnt/stroke/', '')
-        tmp['scandir'] = root.replace('/mnt/newstroke/', '').replace('/mnt/stroke/', '')
-        tmp['nfiles'] = len(files)
-        tmp['same_position_number'] = n_same_position
-        # datetimevar, tmp = get_datetime_column(tmp)
-        unique_dirno += 1
-        if isinstance(tmp, pd.Series):
-            tmp = tmp.to_frame().T
 
-        scan_mdata.append(tmp)
+    try:
+        if len(scan_mdata) == 0:
+            raise ValueError(f"No valid series found for ID {ID} in {pid} with the given file and multipos limits.")
+        elif len(scan_mdata) == 1:
+            mdata = scan_mdata[0]
+        elif len(scan_mdata) > 1:
+            mdata = pd.concat(scan_mdata, ignore_index=True).reset_index(drop=True)
 
-    if len(scan_mdata) == 0:
-        raise ValueError(f"No valid series found for ID {ID} in {pid} with the given file and multipos limits.")
-    elif len(scan_mdata) == 1:
-        mdata = scan_mdata[0]
-    elif len(scan_mdata) > 1:
-        mdata = pd.concat(scan_mdata, ignore_index=True).reset_index(drop=True)
+        # adds the required datetime metadata if needed and sorts chronologically
+        mdata = pd_redo_timestamp(mdata)
+        mdata['DateTimeSelected'] = mdata.apply(lambda row: row.get(row.get("datetimevar"), None), axis=1)
+        mdata.sort_values(by=['DateTimeSelected'], inplace=True, na_position='last')
+        # identify likely DWI
+        mdata = dwi_identifier(mdata, n_same_pos=(2, 15))
+        # identify likely CTP and PWI
+        mdata = perf_identifier(mdata, n_same_pos=(15, 1e6))
+        # NCCT identifier
+        mdata = ncct_identifier(mdata)
+        # CTA identifier
+        mdata = cta_identifier(mdata)
 
-    # adds the required datetime metadata if needed and sorts chronologically
-    mdata = pd_redo_timestamp(mdata)
-    mdata['DateTimeSelected'] = mdata.apply(lambda row: row.get(row.get("datetimevar"), None), axis=1)
-    mdata.sort_values(by=['DateTimeSelected'], inplace=True, na_position='last')
-    # identify likely DWI
-    mdata = dwi_identifier(mdata, n_same_pos=(2, 15))
-    # identify likely CTP and PWI
-    mdata = perf_identifier(mdata, n_same_pos=(15, 1e6))
-    # NCCT identifier
-    mdata = ncct_identifier(mdata)
-    # CTA identifier
-    mdata = cta_identifier(mdata)
-
-    if f_out is not None:
-        if f_out.endswith('.xlsx'):
-            mdata.to_excel(f_out, index=False)
-        elif f_out.endswith('.pic'):
-            mdata.to_pickle(f_out)
-        else:
-            raise ValueError(f"Unsupported file extension for output: {f_out}")
+        if f_out is not None:
+            if f_out.endswith('.xlsx'):
+                mdata.to_excel(f_out, index=False)
+            elif f_out.endswith('.pic'):
+                mdata.to_pickle(f_out)
+            else:
+                raise ValueError(f"Unsupported file extension for output: {f_out}")
+    except Exception as e:
+        print(f"Error processing metadata for ID {ID}: {e}")
 
     return mdata
 
@@ -481,7 +488,7 @@ if __name__ == "__main__":
     #get_full_combined(args.output, redo_timestamps=True, redo_labelling=True)
 
     ##get_full_combined(args.output, redo_timestamps=True, redo_labelling=True)
-    for batch in ['batch1', 'batch2', 'batch3', 'batch4', 'batch5', 'batch6', 'batch7',
+    for batch in ['batch1', 'batch2', 'batch_2nd_Encounter', 'batch3', 'batch4', 'batch5', 'batch6', 'batch7',
                   'batch8', 'batch9', 'batch10', 'batch11']:
         batch_dir = os.path.join(args.input, batch)
         if not os.path.exists(batch_dir):
