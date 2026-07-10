@@ -57,7 +57,14 @@ def perf_identifier(mdata, n_same_pos=(12,1e6), sd_excl=['asl', 'fmri', 'qsm',*E
     i_ctp, i_pwi = 1, 1
     for __, row in mdata.iterrows():
         try:
+            #exclusion based on lack of multiple frames with same position
             if row['same_position_number'] < n_same_pos[0] or row['same_position_number'] > n_same_pos[1]:
+                likely_ctp.append(False)
+                likely_pwi.append(False)
+                continue
+
+            #exclusion based on description
+            if any([sde.lower() in row['SeriesDescription'].lower() for sde in sd_excl]):
                 likely_ctp.append(False)
                 likely_pwi.append(False)
                 continue
@@ -67,13 +74,9 @@ def perf_identifier(mdata, n_same_pos=(12,1e6), sd_excl=['asl', 'fmri', 'qsm',*E
                 likely_pwi.append(False)
                 i_ctp+=1
             elif row['Modality']=='MR':
-                if any([sde.lower() in row['SeriesDescription'].lower() for sde in sd_excl]):
-                    likely_ctp.append(False)
-                    likely_pwi.append(False)
-                else:
-                    likely_ctp.append(False)
-                    likely_pwi.append(f'PWI_{i_pwi}')
-                    i_pwi+=1
+                likely_ctp.append(False)
+                likely_pwi.append(f'PWI_{i_pwi}')
+                i_pwi+=1
         except:
             likely_ctp.append(False)
             likely_pwi.append(False)

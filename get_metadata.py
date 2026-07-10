@@ -12,7 +12,7 @@ from metadata import complete_tag_values, get_tag_value
 from multiframe import n_same_position_from_dicom
 from datetimeadjust import get_datetime_column, pd_redo_timestamp
 from modality_finder import dwi_identifier, perf_identifier, ncct_identifier, cta_identifier
-from utils import combine_excel_files
+from utils import combine_excel_files, make_columns_unique
 from utils import get_general_args
 from multiprocessing import Pool
 
@@ -47,6 +47,24 @@ def chunk_jobs(input_dir, output_dir, jobs, file_limits=(0,1e6), multipos_limits
 
     return jobs
 
+def process_dcmdir(root, fix=10, n_same_position=None, skip_tags=['Privatetagdata'], unique_dirno=None, ID=None, pid=None):
+    file10 = os.path.join(root, os.listdir(root)[fix])
+    dcm = pydicom.dcmread(file10, stop_before_pixels=True)
+    tmp = complete_tag_values(dcm, skip_tags=skip_tags)
+    tmp['dirno'] = unique_dirno
+    tmp['dcmfile'] = file10
+    tmp['ID'] = ID
+    tmp['pid'] = pid.replace('/mnt/newstroke/', '').replace('/mnt/stroke/', '')
+    tmp['scandir'] = root.replace('/mnt/newstroke/', '').replace('/mnt/stroke/', '')
+    tmp['nfiles'] = len(os.listdir(root))
+    if n_same_position is None:
+        tmp['same_position_number'] = n_same_position_from_dicom(root, fix=fix)
+    else:
+        tmp['same_position_number'] = n_same_position
+
+    if isinstance(tmp, pd.Series):
+        tmp = tmp.to_frame().T
+    return tmp
 
 def all_series_of_ID(ID, p_in, f_out=None, file_limits=(0, 1e6), multipos_limits=(1, 12), skip_tags=['Privatetagdata']):
     """
@@ -62,26 +80,26 @@ def all_series_of_ID(ID, p_in, f_out=None, file_limits=(0, 1e6), multipos_limits
     unique_dirno = 0
     scan_mdata = []
     for root, drs, files in os.walk(pid):
+        #iterates over series folders
+        #skips fewer than min_files or more than max_files files
+        #skips fewer than min_mpos or more than max_mpos same position slices
         try:
             if len(files) < min_files or len(files) > max_files:
                 continue
             n_same_position = n_same_position_from_dicom(root, fix=min_files - 1)
             if n_same_position < min_mpos or n_same_position > max_mpos:
                 continue
-            file10 = os.path.join(root, os.listdir(root)[min_files - 1])
-            dcm = pydicom.dcmread(file10, stop_before_pixels=True)
-            tmp = complete_tag_values(dcm, skip_tags=skip_tags)
-            tmp['dirno'] = unique_dirno
-            tmp['dcmfile'] = file10
-            tmp['ID'] = ID
-            tmp['pid'] = pid.replace('/mnt/newstroke/', '').replace('/mnt/stroke/', '')
-            tmp['scandir'] = root.replace('/mnt/newstroke/', '').replace('/mnt/stroke/', '')
-            tmp['nfiles'] = len(files)
-            tmp['same_position_number'] = n_same_position
-            # datetimevar, tmp = get_datetime_column(tmp)
+            #processes unique dicom series
+            tmp = process_dcmdir(root,
+                                 fix=min_files - 1,
+                                 n_same_position=n_same_position, #if not a number given is calculated
+                                 skip_tags=skip_tags, #tags to skip (generally hiddern causing errors)
+                                 unique_dirno=unique_dirno, #may be skipped
+                                 ID=ID, pid=pid) #ID is vital for finding later
             unique_dirno += 1
-            if isinstance(tmp, pd.Series):
-                tmp = tmp.to_frame().T
+
+            if tmp.columns.has_duplicates:
+                tmp.columns = make_columns_unique(tmp.columns)
 
             scan_mdata.append(tmp)
         except Exception as e:

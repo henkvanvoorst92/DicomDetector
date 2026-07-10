@@ -30,7 +30,7 @@ multi_modal_kernels = ['STANDARD', 'H30f', 'J30f4', 'J40f3', 'B', 'IMR1,Brain Ro
                        'J30s3', ]
 
 #Description exclusion strings
-EXCLUSION_description = ['cor', 'sag', 'pjn', 'overlay', 'mip']
+EXCLUSION_description = ['cor', 'sag', 'pjn', 'overlay', 'mip', 'rendering']
 
 #Description inclusion string
 cardio_description = ['cardio', 'cardiac seq']

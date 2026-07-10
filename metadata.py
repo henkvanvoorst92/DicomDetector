@@ -169,15 +169,16 @@ def complete_tag_values(dcm, stringconvert=False, skip_tags=[]):
             except Exception as e:
                 print('Error in SharedFunctionalGroupsSequence:', e)
     try:
-        row_tags = np.array(row_tags)
-        cols = np.array(cols)
+        row_tags = np.asarray(row_tags, dtype=object)
+        cols = np.array(cols, dtype=object)
 
         isna_vec = np.vectorize(pd.isna)
         na_mask = isna_vec(row_tags)
 
         row_tags = row_tags[~na_mask]
         cols = cols[~na_mask]
-        output = (cols,row_tags)
+        output = pd.DataFrame(index=row_tags).reset_index().T
+        output.columns = cols
     except:
         output = pd.DataFrame(index=row_tags).reset_index().T
         output.columns = cols
