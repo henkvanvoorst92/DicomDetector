@@ -151,7 +151,7 @@ def complete_tag_values(dcm, stringconvert=False, skip_tags=[]):
                 tagname2no, tagno2name = get_tagnos_tagnames(subsubdcm)
                 r = all_tag_values(subsubdcm, tagno2name, stringconvert=True)
                 row_tags.extend(r)
-                cols.extend(list(tagname2no.keys()))
+                cols.extend([f'PerFrameFunctionalGroupsSequence_{k}' for k in tagname2no.keys()])
             except Exception as e:
                 print('Error in PerFrameFunctionalGroupsSequence:', e)
 
@@ -165,7 +165,7 @@ def complete_tag_values(dcm, stringconvert=False, skip_tags=[]):
                 tagname2no, tagno2name = get_tagnos_tagnames(subsubdcm)
                 r = all_tag_values(subsubdcm, tagno2name, stringconvert=True)
                 row_tags.extend(r)
-                cols.extend(list(tagname2no.keys()))
+                cols.extend([f'SharedFunctionalGroupsSequence_{k}' for k in tagname2no.keys()])
             except Exception as e:
                 print('Error in SharedFunctionalGroupsSequence:', e)
     try:

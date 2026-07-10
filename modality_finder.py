@@ -67,10 +67,11 @@ def perf_identifier(mdata, n_same_pos=(12,1e6), sd_excl=['asl', 'fmri', 'qsm',*E
                 likely_pwi.append(False)
                 i_ctp+=1
             elif row['Modality']=='MR':
-                likely_ctp.append(False)
-                if any([sde in row['SeriesDescription'].lower() for sde in sd_excl]):
+                if any([sde.lower() in row['SeriesDescription'].lower() for sde in sd_excl]):
+                    likely_ctp.append(False)
                     likely_pwi.append(False)
                 else:
+                    likely_ctp.append(False)
                     likely_pwi.append(f'PWI_{i_pwi}')
                     i_pwi+=1
         except:

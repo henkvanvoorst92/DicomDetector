@@ -118,6 +118,7 @@ def all_series_of_ID(ID, p_in, f_out=None, file_limits=(0, 1e6), multipos_limits
                 raise ValueError(f"Unsupported file extension for output: {f_out}")
     except Exception as e:
         print(f"Error processing metadata for ID {ID}: {e}")
+        print(1)
 
     return mdata
 
