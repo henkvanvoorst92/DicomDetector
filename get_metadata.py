@@ -201,46 +201,55 @@ def get_full_combined(dir_outputs, f_out=None, incl_string='_metadata.xlsx', red
         df = df[[c for c in first_cols if c in df.columns] + [c for c in df.columns if c not in first_cols]]
         if redo_timestamps:
             df = pd_redo_timestamp(df)
-        df.to_excel(f_out, index=False)
-    else:
-        df = pd.read_excel(f_out)
 
-    if redo_labelling:
-        out = []
-        for ID, tmp in tqdm(df.groupby('ID'), desc='Redoing labelling per ID'):
-            tmp['ID'] = ID
-            tmp['DateTimeSelected'] = tmp.apply(lambda row: row.get(row.get("datetimevar"), None), axis=1)
-            tmp.sort_values(by=['DateTimeSelected'], inplace=True)
-            tmp = dwi_identifier(tmp, n_same_pos=(2,14))
-            tmp = perf_identifier(tmp, n_same_pos=(14,1e6))
-            tmp = ncct_identifier(tmp)
-            tmp = cta_identifier(tmp)
-            out.append(tmp)
-        df = pd.concat(out, ignore_index=True)
-        df.to_excel(f_out, index=False)
-
-        #labels set on baseline and followup timepoint
-        f_timedata = os.path.join(os.path.dirname(f_out), 'LVO_labels.xlsx')
-        timedata = pd.read_excel(f_timedata).drop_duplicates(subset='id', keep='first').set_index('id')
-        xa_dct = pd.to_datetime(timedata[timedata['timepoint3_desc'] == 'first_xa']['timepoint3']).to_dict()
-        bl_dct = (pd.to_datetime(timedata[timedata['timepoint3_desc'] != 'first_xa']['timepoint2']) + pd.Timedelta(
-            hours=5)).to_dict()
-        evt_dct = {**xa_dct, **bl_dct}
-        out = []
-        for ID, tmp in df.groupby('ID'):
-            if ID in evt_dct:
-                evt_time = evt_dct[ID]
-                tmp['baseline'] = tmp['DateTimeSelected'] < evt_time
-                tmp['followup'] = tmp['DateTimeSelected'] >= evt_time
+        if redo_labelling:
+            out = []
+            for ID, tmp in tqdm(df.groupby('ID'), desc='Redoing labelling per ID'):
                 tmp['ID'] = ID
+                tmp['DateTimeSelected'] = tmp.apply(lambda row: row.get(row.get("datetimevar"), None), axis=1)
+                tmp.sort_values(by=['DateTimeSelected'], inplace=True)
+                tmp = dwi_identifier(tmp, n_same_pos=(2, 14))
+                tmp = perf_identifier(tmp, n_same_pos=(14, 1e6))
+                tmp = ncct_identifier(tmp)
+                tmp = cta_identifier(tmp)
                 out.append(tmp)
-        df = pd.concat(out, ignore_index=True)
+            df = pd.concat(out, ignore_index=True)
+            #df.to_excel(f_out, index=False)
+            #df.to_pickle(f_out.replace('.xlsx', '.pic'))
 
-        print(f'Writing combined metadata to {f_out}\n', 'Length of combined metadata:', len(df))
+        df.to_pickle(f_out.replace('.xlsx', '.pic'))
         df.to_excel(f_out, index=False)
     else:
-        df = pd.read_excel(f_out)
+        df = pd.read_pickle(f_out.replace('.xlsx', '.pic'))
+        df.index = df['ID']
 
+    #labels set on baseline and followup timepoint
+    print(f'Adding baseline and followup labels to combined metadata in \n{f_out}')
+    f_timedata = os.path.join(os.path.dirname(f_out), 'LVO_labels.xlsx')
+    timedata = pd.read_excel(f_timedata).drop_duplicates(subset='id', keep='first').set_index('id')
+    xa_dct = pd.to_datetime(timedata[timedata['timepoint3_desc'] == 'first_xa']['timepoint3']).to_dict()
+    bl_dct = (pd.to_datetime(timedata[timedata['timepoint3_desc'] != 'first_xa']['timepoint2']) + pd.Timedelta(
+        hours=5)).to_dict()
+    evt_dct = {**xa_dct, **bl_dct}
+    out = []
+    for ID, tmp in df.groupby('ID'):
+        if ID in evt_dct:
+            evt_time = evt_dct[ID]
+            tmp['baseline'] = tmp['DateTimeSelected'] < evt_time
+            tmp['followup'] = tmp['DateTimeSelected'] >= evt_time
+            tmp['ID'] = ID
+            out.append(tmp)
+    df = pd.concat(out, ignore_index=True)
+
+    print(f'Writing combined metadata to {f_out}\n', 'Length of combined metadata:', len(df))
+    df.to_excel(f_out, index=False)
+    df.to_pickle(f_out.replace('.xlsx', '.pic'))
+    # else:
+    #     #df = pd.read_excel(f_out)
+    #     df = pd.read_pickle(f_out.replace('.xlsx', '.pic'))
+    #     df.index = df['ID']
+
+    print(f'Matching PWI to DWI and writing to {os.path.join(os.path.dirname(f_out), "matched_pwi_dwi.xlsx")}')
     f_matched_pwi_dwi = os.path.join(os.path.dirname(f_out), 'matched_pwi_dwi.xlsx')
     if not os.path.exists(f_matched_pwi_dwi):
         pwi_dwi = match_pwi_dwi(df)
