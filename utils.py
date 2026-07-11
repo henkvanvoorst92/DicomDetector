@@ -7,9 +7,9 @@ import yaml
 
 def combine_excel_files(p_dir, incl_string='.xlsx', verbose=False):
     if verbose:
-        return pd.concat([pd.read_excel(os.path.join(p_dir, f)) for f in tqdm(os.listdir(p_dir)) if incl_string in f], axis=0)
+        return pd.concat([pd.read_excel(os.path.join(p_dir, f)) for f in tqdm(os.listdir(p_dir)) if incl_string in f and os.path.exists(os.path.join(p_dir, f)) and not 'lock' in f], axis=0)
     else:
-        return pd.concat([pd.read_excel(os.path.join(p_dir, f)) for f in os.listdir(p_dir) if incl_string in f], axis=0)
+        return pd.concat([pd.read_excel(os.path.join(p_dir, f)) for f in os.listdir(p_dir) if incl_string in f and os.path.exists(os.path.join(p_dir, f)) and not 'lock' in f], axis=0)
 
 def load_yaml_config(yaml_file):
     with open(yaml_file, 'r') as file:

@@ -43,11 +43,12 @@ CTA_description = ['mip', 'cta', 'art', 'carotid', 'angio', 'willis', 'missing',
                    'cerebrum 0.75  h30f', 'sag 2 incr 1', 'cor 2 incr 1', 'cta hersenen', 'carotis',
                    'cerebrum 0.75  j30f  4', 'cerebrum 5.0  j30f  4', 'hersenen cor 1', 'hersenen sag 1',
                    'mpr cor 1-1', 'mpr sag 1-1', 'hals', 'imr ax hersenen', 'TI-CTA', 'headangio',
-                   'cerebrum col 0', 'cerebrum col  1', 'cerebrum col 1']
+                   'cerebrum col 0', 'cerebrum col  1', 'cerebrum col 1'
+                   ]
 NCCT_description = ['zonder contrast', 'blanco', '11912593', 'schedel', 'cerebrum', '_hem', 'mpr tra F_0.4',
                     'hemorrhage', 'hersenen', 'sbi', 'mpr cor', 'mpr tra', 'mpr sag', 'mpr 5', 'zc sched',
                     'cerebr spi', 'mpr cer spi', 'brein b', 'vnc 5', 'ce 5', 'head wo', 'Non enhanced Brain', 'non con head',
-
+                    'axial head std', 'ROUTINE HEAD STD',
                     ]
 CTP_description = ['perfusie', 'perfusion', 'ctp', 'smart prep', 'perf', '5 AX, iDose (3)', 'vpct']
 DSA_description = ['strokebehandeling', 'cerebral', 'lao', 'carotis', 'bronchialis', '4f', 'fluor', 'vfr',

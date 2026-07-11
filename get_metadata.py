@@ -138,7 +138,6 @@ def all_series_of_ID(ID, p_in, f_out=None, file_limits=(0, 1e6), multipos_limits
                 raise ValueError(f"Unsupported file extension for output: {f_out}")
     except Exception as e:
         print(f"Error processing metadata for ID {ID}: {e}")
-        print(1)
 
     return mdata
 
@@ -185,7 +184,7 @@ def get_all_metadata(inp,
 
 def get_full_combined(dir_outputs, f_out=None, incl_string='_metadata.xlsx', redo_timestamps=False, redo_labelling=False):
     if f_out is None:
-        f_out = os.path.join(os.path.dirname(dir_outputs), 'combined_multiframe.xlsx')
+        f_out = os.path.join(os.path.dirname(dir_outputs), 'combined_metadata.xlsx')
     if not os.path.exists(f_out):
         df = combine_excel_files(dir_outputs, incl_string=incl_string, verbose=True)
         #df = df_add_same_position(df)
@@ -200,21 +199,25 @@ def get_full_combined(dir_outputs, f_out=None, incl_string='_metadata.xlsx', red
                       'SeriesDateTime', 'SeriesDate', 'SeriesTime',
                       ]
         df = df[[c for c in first_cols if c in df.columns] + [c for c in df.columns if c not in first_cols]]
-
         if redo_timestamps:
             df = pd_redo_timestamp(df)
-        if redo_labelling:
-            out = []
-            for ID, tmp in tqdm(df.groupby('ID'), desc='Redoing labelling per ID'):
-                tmp['ID'] = ID
-                tmp['DateTimeSelected'] = tmp.apply(lambda row: row[row['datetimevar']], axis=1)
-                tmp.sort_values(by=['DateTimeSelected'], inplace=True)
-                tmp = dwi_identifier(tmp, n_same_pos=(2,14))
-                tmp = perf_identifier(tmp, n_same_pos=(14,1e6))
-                tmp = ncct_identifier(tmp)
-                tmp = cta_identifier(tmp)
-                out.append(tmp)
-            df = pd.concat(out, ignore_index=True)
+        df.to_excel(f_out, index=False)
+    else:
+        df = pd.read_excel(f_out)
+
+    if redo_labelling:
+        out = []
+        for ID, tmp in tqdm(df.groupby('ID'), desc='Redoing labelling per ID'):
+            tmp['ID'] = ID
+            tmp['DateTimeSelected'] = tmp.apply(lambda row: row.get(row.get("datetimevar"), None), axis=1)
+            tmp.sort_values(by=['DateTimeSelected'], inplace=True)
+            tmp = dwi_identifier(tmp, n_same_pos=(2,14))
+            tmp = perf_identifier(tmp, n_same_pos=(14,1e6))
+            tmp = ncct_identifier(tmp)
+            tmp = cta_identifier(tmp)
+            out.append(tmp)
+        df = pd.concat(out, ignore_index=True)
+        df.to_excel(f_out, index=False)
 
         #labels set on baseline and followup timepoint
         f_timedata = os.path.join(os.path.dirname(f_out), 'LVO_labels.xlsx')
@@ -507,7 +510,7 @@ def match_dwi_blfu(
 if __name__ == "__main__":
     args = get_general_args()
 
-    #get_full_combined(args.output, redo_timestamps=True, redo_labelling=True)
+    get_full_combined(args.output, redo_timestamps=True, redo_labelling=True)
 
     ##get_full_combined(args.output, redo_timestamps=True, redo_labelling=True)
     for batch in ['batch1', 'batch2', 'batch_2nd_Encounter', 'batch3', 'batch4', 'batch5', 'batch6', 'batch7',
