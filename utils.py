@@ -11,6 +11,14 @@ def combine_excel_files(p_dir, incl_string='.xlsx', verbose=False):
     else:
         return pd.concat([pd.read_excel(os.path.join(p_dir, f)) for f in os.listdir(p_dir) if incl_string in f and os.path.exists(os.path.join(p_dir, f)) and not 'lock' in f], axis=0)
 
+def write_excel_chunks(df, max_len, file="output", index=False):
+    max_len = int(max_len)
+    for i in tqdm(range(0, len(df), max_len), desc=f"Writing {file} in chunks of {max_len} rows"):
+        df.iloc[i:i + max_len].to_excel(
+            f"{file}_{i // max_len + 1}.xlsx",
+            index=index
+        )
+
 def load_yaml_config(yaml_file):
     with open(yaml_file, 'r') as file:
         config = yaml.safe_load(file)

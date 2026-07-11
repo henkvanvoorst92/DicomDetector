@@ -12,7 +12,7 @@ from metadata import complete_tag_values, get_tag_value
 from multiframe import n_same_position_from_dicom
 from datetimeadjust import get_datetime_column, pd_redo_timestamp
 from modality_finder import dwi_identifier, perf_identifier, ncct_identifier, cta_identifier
-from utils import combine_excel_files, make_columns_unique
+from utils import combine_excel_files, make_columns_unique, write_excel_chunks
 from utils import get_general_args
 from multiprocessing import Pool
 
@@ -183,21 +183,32 @@ def get_all_metadata(inp,
             continue
 
 def get_full_combined(dir_outputs, f_out=None, incl_string='_metadata.xlsx', redo_timestamps=False, redo_labelling=False):
+    # first columns in output file
+    first_cols = ['ID', 'SeriesDescription', 'SliceThickness', 'has_blfu', 'baseline', 'followup',
+                  'likely_ncct', 'likely_cta', 'likely_ctp', 'likely_pwi', 'likely_dwi',
+                  'nfiles', 'same_position_number', 'scandir',
+                  'SelectedDateTime', 'DateTimeSelected',
+                  'AcquisitionDateTime', 'AcquisitionDate', 'AcquisitionTime',
+                  'ContentDateTime', 'ContentDate', 'ContentTime',
+                  'SeriesDateTime', 'SeriesDate', 'SeriesTime',
+                  ]
+
     if f_out is None:
         f_out = os.path.join(os.path.dirname(dir_outputs), 'combined_metadata.xlsx')
-    if not os.path.exists(f_out):
+
+    pic_out = f_out.replace('.xlsx', '.pic')
+    # df = pd.read_pickle(pic_out) if os.path.exists(pic_out) else None
+    # df = df[[c for c in first_cols if c in df.columns] + [c for c in df.columns if c not in first_cols]]
+    # df.index = df['ID']
+    # if len(df) > 20e3:
+    #     new_dir = os.path.join(os.path.dirname(f_out), '{}_chunks'.format(os.path.basename(f_out).split('.')[0]))
+    #     os.makedirs(new_dir, exist_ok=True)
+    #     write_excel_chunks(df, max_len=20e3,
+    #                        file=os.path.join(new_dir, '{}'.format(os.path.basename(f_out).split('.')[0])))
+
+    if not os.path.exists(pic_out):
         df = combine_excel_files(dir_outputs, incl_string=incl_string, verbose=True)
         #df = df_add_same_position(df)
-
-        #first columns in output file
-        first_cols = ['ID', 'SeriesDescription', 'SliceThickness',
-                       'likely_ncct',  'likely_cta', 'likely_ctp', 'likely_pwi', 'likely_dwi',
-                      'nfiles', 'same_position_number', 'scandir',
-                      'SelectedDateTime', 'DateTimeSelected',
-                      'AcquisitionDateTime', 'AcquisitionDate', 'AcquisitionTime',
-                      'ContentDateTime', 'ContentDate', 'ContentTime',
-                      'SeriesDateTime', 'SeriesDate', 'SeriesTime',
-                      ]
         df = df[[c for c in first_cols if c in df.columns] + [c for c in df.columns if c not in first_cols]]
         if redo_timestamps:
             df = pd_redo_timestamp(df)
@@ -214,40 +225,41 @@ def get_full_combined(dir_outputs, f_out=None, incl_string='_metadata.xlsx', red
                 tmp = cta_identifier(tmp)
                 out.append(tmp)
             df = pd.concat(out, ignore_index=True)
-            #df.to_excel(f_out, index=False)
-            #df.to_pickle(f_out.replace('.xlsx', '.pic'))
 
-        df.to_pickle(f_out.replace('.xlsx', '.pic'))
-        df.to_excel(f_out, index=False)
-    else:
-        df = pd.read_pickle(f_out.replace('.xlsx', '.pic'))
-        df.index = df['ID']
-
-    #labels set on baseline and followup timepoint
-    print(f'Adding baseline and followup labels to combined metadata in \n{f_out}')
-    f_timedata = os.path.join(os.path.dirname(f_out), 'LVO_labels.xlsx')
-    timedata = pd.read_excel(f_timedata).drop_duplicates(subset='id', keep='first').set_index('id')
-    xa_dct = pd.to_datetime(timedata[timedata['timepoint3_desc'] == 'first_xa']['timepoint3']).to_dict()
-    bl_dct = (pd.to_datetime(timedata[timedata['timepoint3_desc'] != 'first_xa']['timepoint2']) + pd.Timedelta(
-        hours=5)).to_dict()
-    evt_dct = {**xa_dct, **bl_dct}
-    out = []
-    for ID, tmp in df.groupby('ID'):
-        if ID in evt_dct:
-            evt_time = evt_dct[ID]
-            tmp['baseline'] = tmp['DateTimeSelected'] < evt_time
-            tmp['followup'] = tmp['DateTimeSelected'] >= evt_time
+        #labels set on baseline and followup timepoint
+        print(f'Adding baseline and followup labels to combined metadata in \n{f_out}')
+        f_timedata = os.path.join(os.path.dirname(f_out), 'LVO_labels.xlsx')
+        timedata = pd.read_excel(f_timedata).drop_duplicates(subset='id', keep='first').set_index('id')
+        xa_dct = pd.to_datetime(timedata[timedata['timepoint3_desc'] == 'first_xa']['timepoint3']).to_dict()
+        bl_dct = (pd.to_datetime(timedata[timedata['timepoint3_desc'] != 'first_xa']['timepoint2']) + pd.Timedelta(
+            hours=5)).to_dict()
+        evt_dct = {**xa_dct, **bl_dct}
+        out = []
+        for ID, tmp in tqdm(df.groupby('ID'), desc='Adding baseline and followup labels'):
             tmp['ID'] = ID
+            if ID in evt_dct:
+                evt_time = evt_dct[ID]
+                tmp['baseline'] = tmp['DateTimeSelected'] < evt_time
+                tmp['followup'] = tmp['DateTimeSelected'] >= evt_time
+                tmp['has_blfu'] = True
+            else:
+                tmp['baseline'] = None
+                tmp['followup'] = None
+                tmp['has_blfu'] = False
             out.append(tmp)
-    df = pd.concat(out, ignore_index=True)
 
-    print(f'Writing combined metadata to {f_out}\n', 'Length of combined metadata:', len(df))
-    df.to_excel(f_out, index=False)
-    df.to_pickle(f_out.replace('.xlsx', '.pic'))
-    # else:
-    #     #df = pd.read_excel(f_out)
-    #     df = pd.read_pickle(f_out.replace('.xlsx', '.pic'))
-    #     df.index = df['ID']
+        df = pd.concat(out, ignore_index=True)
+        df = df[[c for c in first_cols if c in df.columns] + [c for c in df.columns if c not in first_cols]]
+        print(f'Writing combined metadata to {f_out}\n', 'Length of combined metadata:', len(df))
+        df.to_pickle(pic_out)
+        if len(df)>20e3:
+            new_dir = os.path.join(os.path.dirname(f_out), '{}_chunks'.format(os.path.basename(f_out).split('.')[0]))
+            os.makedirs(new_dir, exist_ok=True)
+            write_excel_chunks(df, max_len=20e3, file=os.path.join(new_dir, '{}'.format(os.path.basename(f_out).split('.')[0])))
+        else:
+            df.to_excel(f_out, index=False)
+    else:
+        df = pd.read_pickle(pic_out)
 
     print(f'Matching PWI to DWI and writing to {os.path.join(os.path.dirname(f_out), "matched_pwi_dwi.xlsx")}')
     f_matched_pwi_dwi = os.path.join(os.path.dirname(f_out), 'matched_pwi_dwi.xlsx')
@@ -312,7 +324,9 @@ def get_full_combined(dir_outputs, f_out=None, incl_string='_metadata.xlsx', red
         dwiblfu, selected_dwiblfu = match_dwi_blfu(df, baseline_dwi_dct, alternative_ID='org_ID')
         dwiblfu.to_excel(f_dwiblfu, index=False)
         selected_dwiblfu.to_excel(f_selected_blfu, index=False)
-
+    else:
+        dwiblfu = pd.read_excel(f_dwiblfu)
+        selected_dwiblfu = pd.read_excel(f_selected_blfu)
         # baseline_pwi_dwi_dct = pwi_dwi[(pwi_dwi['PWI'] == 'PWI_1') & (pwi_dwi['baseline_PWI'])]['DWI'].to_dict()
         # dwiblfu, selected_dwiblfu = match_dwi_blfu(df, baseline_pwi_dwi_dct)
         # dwiblfu.to_excel(f_dwiblfu.replace('.xlsx', '_w-pwi.xlsx'), index=False)
@@ -519,7 +533,7 @@ def match_dwi_blfu(
 if __name__ == "__main__":
     args = get_general_args()
 
-    get_full_combined(args.output, redo_timestamps=True, redo_labelling=True)
+    #get_full_combined(args.output, redo_timestamps=True, redo_labelling=True)
 
     ##get_full_combined(args.output, redo_timestamps=True, redo_labelling=True)
     for batch in ['batch1', 'batch2', 'batch_2nd_Encounter', 'batch3', 'batch4', 'batch5', 'batch6', 'batch7',
