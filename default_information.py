@@ -11,7 +11,8 @@ CTA_kernels = [ 'B26f' ,'B31f', 'B40f', 'B46f', 'Br38f2', 'Br40d3', 'Bv36d3', 'B
 NCCT_kernels = ['FC21', 'FC68', 'H31f', 'H31s', 'H40s', 'H41s',
              'Hf38s', 'Hf38s3', 'Hr38s3', 'Hr40f3', 'Hr40s', 'Hr40s3',
              'J30s2', 'J30s4', 'J40f4', 'J40s2', 'J40s3', 'J40s5', 'J45s4',
-             'SOFT', 'SOFT#', 'UB',
+             #'SOFT', 'SOFT#',
+             'UB',
              'Br36s2', 'Br36s3', 'BRAIN_LCD', 'FC21', 'FC26', 'FC63', 'FC64', 'FC68', 'UC', 'H41f',
              'Hf35s', 'Hr38s']
 
@@ -27,10 +28,10 @@ Testbolus_kernel = ['B30f', 'Br36f', 'D20f', 'B30s', 'B31s']
 
 # kernel descriptions for kernels with multiple modalities
 multi_modal_kernels = ['STANDARD', 'H30f', 'J30f4', 'J40f3', 'B', 'IMR1,Brain Routi', 'Hr38s3',
-                       'J30s3', ]
+                       'J30s3', 'soft', 'H30s']
 
 #Description exclusion strings
-EXCLUSION_description = ['cor', 'sag', 'pjn', 'overlay', 'mip', 'rendering']
+EXCLUSION_description = ['cor', 'sagi', 'pjn', 'overlay', 'mip', 'rendering', 'summary']
 
 #Description inclusion string
 cardio_description = ['cardio', 'cardiac seq']
@@ -45,12 +46,14 @@ CTA_description = ['mip', 'cta', 'art', 'carotid', 'angio', 'willis', 'missing',
                    'cerebrum col 0', 'cerebrum col  1', 'cerebrum col 1']
 NCCT_description = ['zonder contrast', 'blanco', '11912593', 'schedel', 'cerebrum', '_hem', 'mpr tra F_0.4',
                     'hemorrhage', 'hersenen', 'sbi', 'mpr cor', 'mpr tra', 'mpr sag', 'mpr 5', 'zc sched',
-                    'cerebr spi', 'mpr cer spi', 'brein b', 'vnc 5', 'ce 5']
+                    'cerebr spi', 'mpr cer spi', 'brein b', 'vnc 5', 'ce 5', 'head wo', 'Non enhanced Brain', 'non con head',
+
+                    ]
 CTP_description = ['perfusie', 'perfusion', 'ctp', 'smart prep', 'perf', '5 AX, iDose (3)', 'vpct']
 DSA_description = ['strokebehandeling', 'cerebral', 'lao', 'carotis', 'bronchialis', '4f', 'fluor', 'vfr',
                    'fps']
 DWI_description_excl = ['asl', 'fmri', 'qsm', 'cor', 'sag', 'pjn', 'perf', 'cine', 'ivim', 'dti', 'pwi', 'swi']
-PERF_description_excl = ['asl', 'fmri', 'qsm', 'cor', 'sag', 'pjn', 'cine', 'ivim', 'dti', 'swi']
+PERF_description_excl = ['asl', 'fmri', 'qsm', 'cor', 'pjn', 'cine', 'ivim', 'dti', 'swi']
 
 DE_description = ['dual', 'overlay']
 Testbolus_description = ['tracker', 'smart prep', 'testbolus', 'monitoring  10']

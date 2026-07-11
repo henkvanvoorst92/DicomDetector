@@ -48,6 +48,8 @@ def chunk_jobs(input_dir, output_dir, jobs, file_limits=(0,1e6), multipos_limits
     return jobs
 
 def process_dcmdir(root, fix=10, n_same_position=None, skip_tags=['Privatetagdata'], unique_dirno=None, ID=None, pid=None):
+    #extracting info from single dicom directory
+
     file10 = os.path.join(root, os.listdir(root)[fix])
     dcm = pydicom.dcmread(file10, stop_before_pixels=True)
     tmp = complete_tag_values(dcm, skip_tags=skip_tags)
@@ -119,9 +121,9 @@ def all_series_of_ID(ID, p_in, f_out=None, file_limits=(0, 1e6), multipos_limits
         mdata['DateTimeSelected'] = mdata.apply(lambda row: row.get(row.get("datetimevar"), None), axis=1)
         mdata.sort_values(by=['DateTimeSelected'], inplace=True, na_position='last')
         # identify likely DWI
-        mdata = dwi_identifier(mdata, n_same_pos=(2, 15))
+        mdata = dwi_identifier(mdata, n_same_pos=(2, 14))
         # identify likely CTP and PWI
-        mdata = perf_identifier(mdata, n_same_pos=(15, 1e6))
+        mdata = perf_identifier(mdata, n_same_pos=(14, 1e6))
         # NCCT identifier
         mdata = ncct_identifier(mdata)
         # CTA identifier
@@ -149,6 +151,8 @@ def get_all_metadata(inp,
                      overwrite=False,
                      export_to='.xlsx'):
     """
+    Processing of entire directory with ID subdirs
+
     p_in: first folder should be ID, remainder dicom data dump
     p_out: output location for metadata
     file_limits: only folders in p_in within the file_limites are considered
@@ -178,7 +182,6 @@ def get_all_metadata(inp,
             print(e)
             print(f'Error processing {pid}')
             continue
-
 
 def get_full_combined(dir_outputs, f_out=None, incl_string='_metadata.xlsx', redo_timestamps=False, redo_labelling=False):
     if f_out is None:
@@ -508,7 +511,7 @@ if __name__ == "__main__":
 
     ##get_full_combined(args.output, redo_timestamps=True, redo_labelling=True)
     for batch in ['batch1', 'batch2', 'batch_2nd_Encounter', 'batch3', 'batch4', 'batch5', 'batch6', 'batch7',
-                  'batch8', 'batch9', 'batch10', 'batch11']:
+                  'batch8']:
         batch_dir = os.path.join(args.input, batch)
         if not os.path.exists(batch_dir):
             continue

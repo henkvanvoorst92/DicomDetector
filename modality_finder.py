@@ -25,7 +25,7 @@ def map_imagetype(cell):
         return 1
     else:
         return 4 # "any other number for rest" - adjust as needed
-def dwi_identifier(mdata, n_same_pos=(2,12), sd_excl=[ *EXCLUSION_description, *DWI_description_excl]):
+def dwi_identifier(mdata, n_same_pos=(2,12), sd_excl=['sag', *EXCLUSION_description, *DWI_description_excl]):
 
     if isinstance(mdata, pd.Series):
         mdata = mdata.to_frame().T
@@ -48,7 +48,7 @@ def dwi_identifier(mdata, n_same_pos=(2,12), sd_excl=[ *EXCLUSION_description, *
     mdata['likely_dwi'] = likely_dwi
     return mdata
 
-def perf_identifier(mdata, n_same_pos=(12,1e6), sd_excl=['asl', 'fmri', 'qsm',*EXCLUSION_description, PERF_description_excl]):
+def perf_identifier(mdata, n_same_pos=(12,1e6), sd_excl=['asl', 'fmri', 'qsm',*EXCLUSION_description, *PERF_description_excl]):
 
     if isinstance(mdata, pd.Series):
         mdata = mdata.to_frame().T
@@ -89,7 +89,7 @@ def perf_identifier(mdata, n_same_pos=(12,1e6), sd_excl=['asl', 'fmri', 'qsm',*E
 def cta_identifier(mdata,
                    min_files = 80,
                    incl_descr=[*CTA_description],
-                   excl_description=[*EXCLUSION_description, *CTP_description, *NCCT_BONE_description, *DE_description],
+                   excl_description=['sag',*EXCLUSION_description, *CTP_description, *NCCT_BONE_description, *DE_description],
                    select_kernels=[*CTA_kernels],
                    mm_kernels = [*multi_modal_kernels],
                    excl_kernels = [*Topogram_kernel, *Testbolus_kernel, *NCCT_BONE_kernels, *NCCT_kernels],
@@ -196,7 +196,7 @@ def cta_identifier(mdata,
 def ncct_identifier(mdata,
                     min_files=10,
                     incl_descr=[*NCCT_description],
-                    excl_description=['iodine', *EXCLUSION_description, *CTP_description, *NCCT_BONE_description, *CTA_description, *DE_description],
+                    excl_description=['sag','iodine', *EXCLUSION_description, *CTP_description, *NCCT_BONE_description, *CTA_description, *DE_description],
                     select_kernels=[*NCCT_kernels],
                     mm_kernels=[*multi_modal_kernels],
                     excl_kernels=[*Topogram_kernel, *Testbolus_kernel, *NCCT_BONE_kernels, *CTA_kernels],
