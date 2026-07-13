@@ -12,7 +12,7 @@ from metadata import complete_tag_values, get_tag_value
 from multiframe import n_same_position_from_dicom
 from datetimeadjust import get_datetime_column, pd_redo_timestamp
 from modality_finder import dwi_identifier, perf_identifier, ncct_identifier, cta_identifier
-from utils import combine_excel_files, make_columns_unique, write_excel_chunks
+from utils import combine_excel_files, make_columns_unique, write_excel_chunks, image_path4improc
 from utils import get_general_args
 from multiprocessing import Pool
 
@@ -184,10 +184,11 @@ def get_all_metadata(inp,
 
 def get_full_combined(dir_outputs, f_out=None, incl_string='_metadata.xlsx', redo_timestamps=False, redo_labelling=False):
     # first columns in output file
-    first_cols = ['ID', 'SeriesDescription', 'SliceThickness', 'has_blfu', 'baseline', 'followup',
+    first_cols = ['ID', 'suidID', 'SeriesDescription', 'SliceThickness', 'has_blfu', 'baseline', 'followup',
                   'likely_ncct', 'likely_cta', 'likely_ctp', 'likely_pwi', 'likely_dwi',
+                  'ncct', 'cta', 'ctp', 'pwi', 'dwi',
                   'nfiles', 'same_position_number', 'scandir',
-                  'SelectedDateTime', 'DateTimeSelected',
+                  'SelectedDateTime', 'DateTimeSelected', 'hours_to_evt',
                   'AcquisitionDateTime', 'AcquisitionDate', 'AcquisitionTime',
                   'ContentDateTime', 'ContentDate', 'ContentTime',
                   'SeriesDateTime', 'SeriesDate', 'SeriesTime',
@@ -198,8 +199,7 @@ def get_full_combined(dir_outputs, f_out=None, incl_string='_metadata.xlsx', red
 
     pic_out = f_out.replace('.xlsx', '.pic')
     # df = pd.read_pickle(pic_out) if os.path.exists(pic_out) else None
-    # df = df[[c for c in first_cols if c in df.columns] + [c for c in df.columns if c not in first_cols]]
-    # df.index = df['ID']
+    #df.index = df['ID']
     # if len(df) > 20e3:
     #     new_dir = os.path.join(os.path.dirname(f_out), '{}_chunks'.format(os.path.basename(f_out).split('.')[0]))
     #     os.makedirs(new_dir, exist_ok=True)
@@ -242,14 +242,29 @@ def get_full_combined(dir_outputs, f_out=None, incl_string='_metadata.xlsx', red
                 tmp['baseline'] = tmp['DateTimeSelected'] < evt_time
                 tmp['followup'] = tmp['DateTimeSelected'] >= evt_time
                 tmp['has_blfu'] = True
+                #add hours since evt for identification of optimal bl and fu imaging
+                tmp['hours_to_evt'] = (tmp['DateTimeSelected'] - evt_time).dt.total_seconds() / 3600
             else:
                 tmp['baseline'] = None
                 tmp['followup'] = None
                 tmp['has_blfu'] = False
+                tmp['hours_to_evt'] = None
             out.append(tmp)
 
         df = pd.concat(out, ignore_index=True)
+        df['uid'] = (
+            df['SeriesInstanceUID']
+            .astype(str)
+            .str.replace(r'\D', '', regex=True)
+            .str[-10:]
+        )
+        df['suidID'] = (df['ID'].str.replace('-', '', regex=False) + '-' + df['uid'])
+        #paths for improc
+        df = image_path4improc(df, 'suidID',
+                               likely_cols=[c for c in first_cols if 'likely' in c],
+                               scan_dir_col='scandir')
         df = df[[c for c in first_cols if c in df.columns] + [c for c in df.columns if c not in first_cols]]
+
         print(f'Writing combined metadata to {f_out}\n', 'Length of combined metadata:', len(df))
         df.to_pickle(pic_out)
         if len(df)>20e3:
@@ -280,25 +295,19 @@ def get_full_combined(dir_outputs, f_out=None, incl_string='_metadata.xlsx', red
 
         baseline_dwi = baseline_dwi.sort_values(['ID', 'likely_dwi'])
 
-        letters = 'abcdefghijklmnopqrstuvwxyz'
-
-        # Number of baseline DWIs per ID
-        baseline_dwi['n'] = baseline_dwi.groupby('ID')['likely_dwi'].transform('size')
-
-        # Letter suffix for IDs with multiple entries
-        baseline_dwi['suffix'] = (
-            baseline_dwi.groupby('ID')
-            .cumcount()
-            .map(lambda x: letters[x])
+        # Keep only digits from seriesinstanceuid and take the last 8
+        baseline_dwi['uid8'] = (
+            baseline_dwi['SeriesInstanceUID']
+            .astype(str)
+            .str.replace(r'\D', '', regex=True)
+            .str[-10:]
         )
 
-        baseline_dwi['key'] = baseline_dwi.apply(
-            lambda row: (
-                str(row['ID']).replace('-','')
-                if row['n'] == 1
-                else f"{row['ID'].replace('-','')}-{row['suffix']}"
-            ),
-            axis=1
+        # New key: ID + last 8 digits of SeriesInstanceUID
+        baseline_dwi['key'] = (
+                baseline_dwi['ID'].str.replace('-', '', regex=False)
+                + '-'
+                + baseline_dwi['uid8']
         )
 
         id2id = (
@@ -308,20 +317,22 @@ def get_full_combined(dir_outputs, f_out=None, incl_string='_metadata.xlsx', red
             .to_dict()
         )
 
-        #make sure secondary label is available
+        # make sure secondary label is available
         ID2 = []
         for id_, dwi in zip(df['ID'], df['likely_dwi']):
-            if (id_ in id2id.keys()) and (dwi!=False):
-                id2 = id2id[id_].get(dwi)
+            if (id_ in id2id) and (dwi != False):
+                id2 = id2id.get(id_).get(dwi)
             else:
                 id2 = None
             ID2.append(id2)
+
         df['org_ID'] = df['ID']
         df['ID'] = ID2
 
         baseline_dwi_dct = baseline_dwi.set_index('key')['likely_dwi'].to_dict()
 
         dwiblfu, selected_dwiblfu = match_dwi_blfu(df, baseline_dwi_dct, alternative_ID='org_ID')
+
         dwiblfu.to_excel(f_dwiblfu, index=False)
         selected_dwiblfu.to_excel(f_selected_blfu, index=False)
     else:
@@ -415,19 +426,19 @@ def match_dwi_blfu(
     df,
     reference_dict,
     extra_cols=None,
+
     alternative_ID='org_ID'
 ):
     if extra_cols is None:
-        extra_cols = ['SeriesDescription', 'SliceThickness',
-                      'nfiles', 'same_position_number', 'scandir', 'pid', 'dcmfile',
-                      #'AcquisitionDateTime', 'AcquisitionDate', 'AcquisitionTime',
-                      'ImageType', #'likely_pwi', 'likely_dwi',
-                     'Modality', 'AccessionNumber', 'Manufacturer',
-                     'StudyInstanceUID', 'SeriesInstanceUID', 'StudyID', 'SeriesNumber']
-
+        extra_cols = ['ID', alternative_ID, 'DateTimeSelected', 'hours_to_evt',
+                        'SeriesDescription', 'SliceThickness',
+                        'nfiles', 'same_position_number', 'scandir', 'pid', 'dcmfile',
+                        #'AcquisitionDateTime', 'AcquisitionDate', 'AcquisitionTime',
+                        'ImageType', #'likely_pwi', 'likely_dwi',
+                        'Modality', 'AccessionNumber', 'Manufacturer',
+                        'StudyInstanceUID', 'SeriesInstanceUID', 'StudyID', 'SeriesNumber']
 
     rows = []
-
     #for ID, subdf in tqdm(df.groupby('ID'), desc='Matching DWI baseline and follow-up'):
     for ID, subdf in tqdm(df.groupby('ID'), desc='Matching DWI baseline and follow-up'):
 
@@ -522,6 +533,22 @@ def match_dwi_blfu(
 
             rows.append(row)
     dwiblfu = pd.DataFrame(rows)
+    #new ID using bl and fu SeriesInstanceUID to avoid duplicates
+    dwiblfu['combined_uid'] = (
+            dwiblfu['SeriesInstanceUID_baseline']
+            .astype(str)
+            .str[-10:]
+            + '--' +
+            dwiblfu['SeriesInstanceUID_followup']
+            .astype(str)
+            .str[-10:]
+    )
+
+    dwiblfu['ID'] = (
+            dwiblfu['ID'].astype(str).str.split('-').str[0]
+            + '-'
+            + dwiblfu['combined_uid']
+    )
 
     selected_dwiblfu = (
         dwiblfu.sort_values('preference')
@@ -533,9 +560,8 @@ def match_dwi_blfu(
 if __name__ == "__main__":
     args = get_general_args()
 
-    #get_full_combined(args.output, redo_timestamps=True, redo_labelling=True)
+    get_full_combined(args.output, redo_timestamps=True, redo_labelling=True)
 
-    ##get_full_combined(args.output, redo_timestamps=True, redo_labelling=True)
     for batch in ['batch1', 'batch2', 'batch_2nd_Encounter', 'batch3', 'batch4', 'batch5', 'batch6', 'batch7',
                   'batch8']:
         batch_dir = os.path.join(args.input, batch)

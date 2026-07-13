@@ -93,3 +93,12 @@ def make_columns_unique(columns):
             new_cols.append(f"{col}_{seen[col]}")
 
     return new_cols
+
+def image_path4improc(df, id_col, likely_cols, scan_dir_col='scan_dir'):
+    out = df.copy()
+
+    for col in likely_cols:
+        new_col = col.replace('likely_', '', 1)
+        out[new_col] = out[scan_dir_col].where(out[col] != False)
+    # df.merge(out, on=id_col, how='left')
+    return out
