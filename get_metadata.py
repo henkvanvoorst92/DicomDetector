@@ -198,7 +198,7 @@ def get_full_combined(dir_outputs, f_out=None, incl_string='_metadata.xlsx', red
         f_out = os.path.join(os.path.dirname(dir_outputs), 'combined_metadata.xlsx')
 
     pic_out = f_out.replace('.xlsx', '.pic')
-    # df = pd.read_pickle(pic_out) if os.path.exists(pic_out) else None
+    df = pd.read_pickle(pic_out) if os.path.exists(pic_out) else None
     #df.index = df['ID']
     # if len(df) > 20e3:
     #     new_dir = os.path.join(os.path.dirname(f_out), '{}_chunks'.format(os.path.basename(f_out).split('.')[0]))
@@ -228,17 +228,24 @@ def get_full_combined(dir_outputs, f_out=None, incl_string='_metadata.xlsx', red
 
         #labels set on baseline and followup timepoint
         print(f'Adding baseline and followup labels to combined metadata in \n{f_out}')
-        f_timedata = os.path.join(os.path.dirname(f_out), 'LVO_labels.xlsx')
-        timedata = pd.read_excel(f_timedata).drop_duplicates(subset='id', keep='first').set_index('id')
-        xa_dct = pd.to_datetime(timedata[timedata['timepoint3_desc'] == 'first_xa']['timepoint3']).to_dict()
-        bl_dct = (pd.to_datetime(timedata[timedata['timepoint3_desc'] != 'first_xa']['timepoint2']) + pd.Timedelta(
-            hours=5)).to_dict()
-        evt_dct = {**xa_dct, **bl_dct}
+        time_cols = ['femoral_sheath_time', 'receiving_arrival_time', 'time_recognized' ]
+        f_timedata = os.path.join(os.path.dirname(f_out), 'LVO_labels_2026-07-13_1036.csv')
+        timedata = pd.read_csv(f_timedata, index_col='ID')
+        timedata['time_source'] = timedata[time_cols].notna().idxmax(axis=1)
+        #timedata = pd.read_excel(f_timedata).drop_duplicates(subset='id', keep='first').set_index('id')
+        evt_dct = pd.to_datetime(timedata['femoral_sheath_time'], errors='coerce').dropna().to_dict()
+        bl_dct = (pd.to_datetime(timedata['receiving_arrival_time'], errors='coerce') + pd.Timedelta(hours=5)).dropna().to_dict()
+        recognized_dct = (pd.to_datetime(timedata['time_recognized'], errors='coerce') + pd.Timedelta(hours=10)).dropna().to_dict()
+        time_dct = {**recognized_dct,**bl_dct, **evt_dct}
+        # xa_dct = pd.to_datetime(timedata[timedata['timepoint3_desc'] == 'first_xa']['timepoint3']).to_dict()
+        # bl_dct = (pd.to_datetime(timedata[timedata['timepoint3_desc'] != 'first_xa']['timepoint2']) + pd.Timedelta(
+        #     hours=5)).to_dict()
+        #time_dct = {**evt_dct, **bl_dct}
         out = []
         for ID, tmp in tqdm(df.groupby('ID'), desc='Adding baseline and followup labels'):
             tmp['ID'] = ID
-            if ID in evt_dct:
-                evt_time = evt_dct[ID]
+            if ID in time_dct:
+                evt_time = time_dct[ID]
                 tmp['baseline'] = tmp['DateTimeSelected'] < evt_time
                 tmp['followup'] = tmp['DateTimeSelected'] >= evt_time
                 tmp['has_blfu'] = True
@@ -252,6 +259,8 @@ def get_full_combined(dir_outputs, f_out=None, incl_string='_metadata.xlsx', red
             out.append(tmp)
 
         df = pd.concat(out, ignore_index=True)
+        df = df.merge(timedata[['time_source', *time_cols]], how='left', left_on='ID', right_index=True)
+
         df['uid'] = (
             df['SeriesInstanceUID']
             .astype(str)
@@ -288,6 +297,7 @@ def get_full_combined(dir_outputs, f_out=None, incl_string='_metadata.xlsx', red
     f_dwiblfu = os.path.join(os.path.dirname(f_out), 'all_matched_dwi_blfu.xlsx')
     f_selected_blfu = os.path.join(os.path.dirname(f_out), 'selected_matched_dwi_blfu.xlsx')
     if not os.path.exists(f_dwiblfu):
+
         baseline_dwi = df[
             (df['likely_dwi'] != False) &
             (df['baseline'])
